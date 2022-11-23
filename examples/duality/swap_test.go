@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"testing"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
@@ -198,7 +197,7 @@ func TestDualityIBCSwapMiddleware(t *testing.T) {
 	require.Equal(t, ibcTransferAmount, dualityBalCurrent)
 
 	// dualityd tx dex deposit [receiver] [token-a] [token-b] [list of amount-0] [list of amount-1] [list of tick-index] [list of fee] [flags]
-	depositAmount, err := sdktypes.NewDecFromStr(strconv.FormatInt(1000, 10))
+	// depositAmount, err := sdktypes.NewDecFromStr(strconv.FormatFloat(0.0002, 10))
 	require.NoError(t, err)
 
 	depositCmd := []string{
@@ -206,14 +205,17 @@ func TestDualityIBCSwapMiddleware(t *testing.T) {
 		dualityKey.Address,
 		duality.Config().Denom,
 		gaiaDenomTrace.IBCDenom(),
-		depositAmount.String(),
-		depositAmount.String(),
+		"0.0000000000001",
+		"0.0000000000001",
+		// depositAmount.String(),
+		// depositAmount.String(),
 		"0",
 		"1",
 		"--chain-id", duality.Config().ChainID,
 		"--node", duality.GetRPCAddress(),
 		"--from", dualityKey.KeyName,
 		"--keyring-backend", "test",
+		"--gas", "auto",
 		"--yes",
 		"--home", duality.HomeDir(),
 	}
@@ -237,18 +239,17 @@ func TestDualityIBCSwapMiddleware(t *testing.T) {
 	// Query the token pair map
 	stdout, stderr, err = duality.Exec(ctx, queryTokensCmd, nil)
 	require.NoError(t, err)
-
 	t.Logf("STDOUT: %s \n", stdout)
 	t.Logf("STDERR: %s \n", stderr)
 
 	// Assert that the deposit was successful and the funds are moved out of the Duality user acc
 	dualityBalIBC, err := duality.GetBalance(ctx, dualityKey.Address, gaiaDenomTrace.IBCDenom())
 	require.NoError(t, err)
-	require.Equal(t, 0, dualityBalIBC)
+	require.Equal(t, int64(0), dualityBalIBC)
 
 	dualityBalNative, err := duality.GetBalance(ctx, dualityKey.Address, duality.Config().Denom)
 	require.NoError(t, err)
-	require.Equal(t, dualityOrigBalNative-ibcTransferAmount, dualityBalNative)
+	require.Equal(t, int64(dualityOrigBalNative-ibcTransferAmount), dualityBalNative)
 
 	t.Logf("BAL ALICE %s: %d \n", duality.Config().Denom, dualityBalNative)
 	t.Logf("BAL ALICE %s: %d \n", gaiaDenomTrace.IBCDenom(), dualityBalIBC)
